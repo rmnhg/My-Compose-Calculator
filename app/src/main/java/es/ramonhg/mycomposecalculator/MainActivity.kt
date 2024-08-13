@@ -107,7 +107,7 @@ fun Calculator() {
         ElevatedButton(onClick = { screen += "0" }) {
             Text("0")
         }
-        ElevatedButton(onClick = { screen = "" }) {
+        ElevatedButton(onClick = { screen = solveCalculus(screen) }) {
             Text("=")
         }
         ElevatedButton(onClick = { screen += "-" }) {
@@ -123,23 +123,70 @@ fun Calculator() {
 
 fun solveCalculus(calculus: String): String {
     val symbols = arrayOf('*', '/', '+', '-')
-    if (!calculus[0].isDigit() || calculus == "ERROR")
+    var calculusPositive: String = if (calculus[0] == '-') calculus.drop(1) else calculus
+    if (!calculusPositive[0].isDigit() || calculus == "ERROR")
         return "ERROR"
-    if (calculus.isDigitsOnly())
+    if (calculusPositive.replace('.', '0').isDigitsOnly())
         return calculus
-    var gettingNum: String = "1"
+
+    var currentSymbol = ' '
+    for (symbol in symbols) {
+        if (symbol in calculusPositive) {
+            currentSymbol = symbol
+            break
+        }
+    }
+    if (currentSymbol == ' ')
+        return "ERROR"
+
+    var gettingNum: Int = 1
     var num1: String = ""
     var num2: String = ""
-    var operation: Char = ' '
+    var result: Double = 0.0
     for (letter in calculus) {
-        if (gettingNum != "" && (letter.isDigit() || letter == '.')) {
-            if (gettingNum == "1")
+        if (gettingNum != 0 && (letter.isDigit() || letter == '.' || letter == '-')) {
+            if (gettingNum == 1)
                 num1 += letter
             else
                 num2 += letter
         } else {
-            gettingNum = ""
+            if (gettingNum == 1 && letter == currentSymbol) {
+                // We found an interesting symbol. We continue processing the 2nd number
+                num2 = ""
+                gettingNum = 2
+            } else if (gettingNum == 1) {
+                // We found a non-relevant symbol. Keep scanning the next number
+                num1 = ""
+                gettingNum = 1
+            } else if (gettingNum == 2) {
+                // We finish here
+                var double1: Double = java.lang.Double.parseDouble(num1)
+                var double2: Double = java.lang.Double.parseDouble(num2)
+
+                // Get the result
+                when (currentSymbol) {
+                    '*' -> result = double1 * double2
+                    '/' -> result = double1 / double2
+                    '+' -> result = double1 + double2
+                    '-' -> result = double1 - double2
+                }
+                return solveCalculus(calculus.replace(num1 + currentSymbol + num2, result.toString()))
+            }
         }
+    }
+    if (gettingNum == 2) {
+        // We finish here
+        var double1: Double = java.lang.Double.parseDouble(num1)
+        var double2: Double = java.lang.Double.parseDouble(num2)
+
+        // Get the result
+        when (currentSymbol) {
+            '*' -> result = double1 * double2
+            '/' -> result = double1 / double2
+            '+' -> result = double1 + double2
+            '-' -> result = double1 - double2
+        }
+        return solveCalculus(calculus.replace(num1 + currentSymbol + num2, result.toString()))
     }
     return "ERROR"
 }
