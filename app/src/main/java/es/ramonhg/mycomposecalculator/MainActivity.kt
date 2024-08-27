@@ -59,58 +59,58 @@ fun Calculator() {
     }
     Text(text = screen)
     Row(horizontalArrangement = Arrangement.Center) {
-        ElevatedButton(onClick = { screen += "1" }) {
+        ElevatedButton(onClick = { screen = processLetter(screen, '1') }) {
             Text("1")
         }
-        ElevatedButton(onClick = { screen += "2" }) {
+        ElevatedButton(onClick = { screen = processLetter(screen, '2') }) {
             Text("2")
         }
-        ElevatedButton(onClick = { screen += "3" }) {
+        ElevatedButton(onClick = { screen = processLetter(screen, '3') }) {
             Text("3")
         }
-        ElevatedButton(onClick = { screen += "x" }) {
+        ElevatedButton(onClick = { screen = processLetter(screen, 'x') }) {
             Text("X")
         }
     }
     Row(horizontalArrangement = Arrangement.Center) {
-        ElevatedButton(onClick = { screen += "4" }) {
+        ElevatedButton(onClick = { screen = processLetter(screen, '4') }) {
             Text("4")
         }
-        ElevatedButton(onClick = { screen += "5" }) {
+        ElevatedButton(onClick = { screen = processLetter(screen, '5') }) {
             Text("5")
         }
-        ElevatedButton(onClick = { screen += "6" }) {
+        ElevatedButton(onClick = { screen = processLetter(screen, '6') }) {
             Text("6")
         }
-        ElevatedButton(onClick = { screen += "/" }) {
-            Text("%")
+        ElevatedButton(onClick = { screen = processLetter(screen, '/') }) {
+            Text("÷")
         }
     }
     Row(horizontalArrangement = Arrangement.Center) {
-        ElevatedButton(onClick = { screen += "7" }) {
+        ElevatedButton(onClick = { screen = processLetter(screen, '7') }) {
             Text("7")
         }
-        ElevatedButton(onClick = { screen += "8" }) {
+        ElevatedButton(onClick = { screen = processLetter(screen, '8') }) {
             Text("8")
         }
-        ElevatedButton(onClick = { screen += "9" }) {
+        ElevatedButton(onClick = { screen = processLetter(screen, '9') }) {
             Text("9")
         }
-        ElevatedButton(onClick = { screen += "+" }) {
+        ElevatedButton(onClick = { screen = processLetter(screen, '+') }) {
             Text("+")
         }
     }
     Row(horizontalArrangement = Arrangement.Center) {
-        ElevatedButton(onClick = { screen += "." }) {
+        ElevatedButton(onClick = { screen = processLetter(screen, '.') }) {
             Text(".")
         }
-        ElevatedButton(onClick = { screen += "0" }) {
+        ElevatedButton(onClick = { screen = processLetter(screen, '0') }) {
             Text("0")
         }
         ElevatedButton(onClick = { screen = solveCalculus(screen) }) {
             Text("=")
         }
-        ElevatedButton(onClick = { screen += "-" }) {
+        ElevatedButton(onClick = { screen = processLetter(screen, '-') }) {
             Text("-")
         }
     }
@@ -121,74 +121,132 @@ fun Calculator() {
     }
 }
 
-fun solveCalculus(calculus: String): String {
-    val symbols = arrayOf('*', '/', '+', '-')
-    var calculusPositive: String = if (calculus[0] == '-') calculus.drop(1) else calculus
-    if (!calculusPositive[0].isDigit() || calculus == "ERROR")
-        return "ERROR"
-    if (calculusPositive.replace('.', '0').isDigitsOnly())
-        return calculus
+fun processLetter(currentScreen: String, newLetter: Char): String {
+    return if (currentScreen == "ERROR" || currentScreen == "Result of the calculation") "$newLetter" else "$currentScreen$newLetter"
+}
 
-    var currentSymbol = ' '
-    for (symbol in symbols) {
-        if (symbol in calculusPositive) {
-            currentSymbol = symbol
-            break
-        }
+fun resolveSigns(calculus: String): String {
+    var result: String = calculus
+    while ("++" in result || "--" in result || "+-" in result || "-+" in result) {
+        result = result.replace("++", "+").replace("--", "+").replace("+-", "-").replace("-+", "-")
     }
-    if (currentSymbol == ' ')
-        return "ERROR"
+    return result
+}
 
-    var gettingNum: Int = 1
-    var num1: String = ""
-    var num2: String = ""
-    var result: Double = 0.0
-    for (letter in calculus) {
-        if (gettingNum != 0 && (letter.isDigit() || letter == '.' || letter == '-')) {
-            if (gettingNum == 1)
-                num1 += letter
-            else
-                num2 += letter
-        } else {
-            if (gettingNum == 1 && letter == currentSymbol) {
-                // We found an interesting symbol. We continue processing the 2nd number
-                num2 = ""
-                gettingNum = 2
-            } else if (gettingNum == 1) {
-                // We found a non-relevant symbol. Keep scanning the next number
-                num1 = ""
-                gettingNum = 1
-            } else if (gettingNum == 2) {
-                // We finish here
-                var double1: Double = java.lang.Double.parseDouble(num1)
-                var double2: Double = java.lang.Double.parseDouble(num2)
+fun removeLeadingSign(calculus: String, sign: Char): String {
+    return if (calculus[0] == sign) calculus.drop(1) else calculus
+}
 
-                // Get the result
-                when (currentSymbol) {
-                    '*' -> result = double1 * double2
-                    '/' -> result = double1 / double2
-                    '+' -> result = double1 + double2
-                    '-' -> result = double1 - double2
+fun calculateSimpleEquation(calculus: String, num1: String, num2: String, operation: Char): String {
+    var result = 0.0
+    val double1 = num1.toDouble()
+    val double2 = num2.toDouble()
+
+    // Get the result
+    when (operation) {
+        'x' -> result = double1 * double2
+        '/' -> result = double1 / double2
+        '+' -> result = double1 + double2
+        '-' -> result = double1 - double2
+    }
+
+    // Replace result in the original string
+    return calculus.replace("${num1}${operation}${num2}", "${if (result >= 0.0) '+' else ""}${result}")
+}
+
+fun switchMinusAndPlus(calculus: String, toPlus: Boolean): String {
+    return if (toPlus)
+        removeLeadingSign(calculus.replace('-', '+'), '+')
+    else
+        (if (calculus[0].isDigit()) "+$calculus" else calculus).replace('+', '-')
+}
+
+fun removeDotZero(calculus: String): String {
+    return calculus.replace(".0", "")
+}
+
+fun solveCalculus(calculusStr: String): String {
+    val symbols = arrayOf('/', 'x', '+', '-')
+    var calculus = calculusStr
+    try {
+        val oldCalculus = calculus
+        // Remove leading + sign to avoid treating it as the middle of an operation
+        calculus = removeLeadingSign(resolveSigns(calculus), '+')
+        // Remove first '-' to know if we have solved the equation
+        var calculusPositive = removeLeadingSign(calculus, '-')
+        var notSolved = !calculusPositive.replace('.', '0').isDigitsOnly()
+        while (notSolved) {
+            var currentSymbol = ' '
+            // Get the symbol we will process in this iteration
+            for (symbol in symbols) {
+                if (symbol in calculusPositive) {
+                    currentSymbol = symbol
+                    break
                 }
-                return solveCalculus(calculus.replace(num1 + currentSymbol + num2, result.toString()))
             }
-        }
-    }
-    if (gettingNum == 2) {
-        // We finish here
-        var double1: Double = java.lang.Double.parseDouble(num1)
-        var double2: Double = java.lang.Double.parseDouble(num2)
 
-        // Get the result
-        when (currentSymbol) {
-            '*' -> result = double1 * double2
-            '/' -> result = double1 / double2
-            '+' -> result = double1 + double2
-            '-' -> result = double1 - double2
+            if (currentSymbol == ' ') {
+                return "ERROR"
+            }
+
+            // Treat the subtracts of negative numbers as the negative of sums and then turn the
+            // result into negative.
+            var negativeMode = false
+            if (currentSymbol == '-' && calculus[0] == '-') {
+                currentSymbol = '+'
+                calculus = switchMinusAndPlus(calculus = calculus, toPlus = true)
+                negativeMode = true
+            }
+
+            var gettingNum = 1
+            var num1 = ""
+            var num2 = ""
+            var calculatedInCurrentIteration = false
+            for (letter in calculus) {
+                // We only want to save the '-' sign if we are not processing that symbol and if we
+                // are getting the 1st number or if we are going to process the 2nd number
+                val saveMinus = currentSymbol != '-' && (gettingNum == 1 || num2 == "")
+                if (letter.isDigit() || letter == '.' || (letter == '-' && saveMinus)) {
+                    if (gettingNum == 1)
+                        num1 = if (saveMinus && letter == '-') letter.toString() else num1 + letter
+                    else
+                        num2 += letter
+                } else {
+                    if (gettingNum == 1 && letter == currentSymbol) {
+                        // We found an interesting symbol. We continue processing the 2nd number
+                        num2 = ""
+                        gettingNum = 2
+                    } else if (gettingNum == 1) {
+                        // We found a non-relevant symbol. Discard the current 1st number and
+                        // keep scanning the next number
+                        num1 = ""
+                    } else {
+                        // We finish here calculating the expression and replacing it by its result
+                        calculus = calculateSimpleEquation(calculus, num1, num2, currentSymbol)
+
+                        calculatedInCurrentIteration = true
+                    }
+                }
+            }
+
+            if (!calculatedInCurrentIteration && gettingNum == 2) {
+                calculus = calculateSimpleEquation(calculus, num1, num2, currentSymbol)
+            }
+
+            if (negativeMode) {
+                calculus = switchMinusAndPlus(calculus = calculus, toPlus = false)
+            }
+
+            calculus = removeLeadingSign(resolveSigns(calculus), '+')
+            calculusPositive = removeLeadingSign(calculus, '-')
+            notSolved = !calculusPositive.replace('.', '0').isDigitsOnly()
+            if (calculus == oldCalculus)
+                return "ERROR"
         }
-        return solveCalculus(calculus.replace(num1 + currentSymbol + num2, result.toString()))
+        return removeDotZero(calculus)
+    } catch (e: Exception) {
+        return "ERROR"
     }
-    return "ERROR"
 }
 
 @Composable
